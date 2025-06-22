@@ -13,12 +13,16 @@ Build the robust communication bridge between Electron frontend and Python backe
 ## Day-by-Day Plan
 
 ### Day 1: IPC Foundation
+- [ ] Check both Python and Node.js versions
 - [ ] Create `frontend/electron/ipc-bridge.js`
-- [ ] Set up Python subprocess management in Electron
+- [ ] Set up Python subprocess management with version detection:
+  - Try `python3` first, fallback to `python`
+  - Adapt to available Python version (3.8+)
 - [ ] Implement basic request/response protocol
 - [ ] Create message serialization (JSON)
 - [ ] Test basic communication
-- [ ] Update STATUS.md
+- [ ] Create compatibility layer for version differences
+- [ ] Update STATUS.md with environment details
 
 ### Day 2: Message Protocol
 - [ ] Design comprehensive message schema

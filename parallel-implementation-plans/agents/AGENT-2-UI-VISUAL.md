@@ -13,12 +13,17 @@ Build the visual interface that creates trust through step-by-step extraction wi
 ## Day-by-Day Plan
 
 ### Day 1: Core Layout & Components
+- [ ] Check Node.js version (accept 16+ if available)
+- [ ] Install dependencies with fallbacks:
+  - Try: `cd frontend && npm install`
+  - Handle any version conflicts gracefully
+- [ ] Create component directories if missing
 - [ ] Create `frontend/src/components/MainLayout.jsx` with split-screen
 - [ ] Implement `PDFViewer` component using PDF.js
 - [ ] Build resizable divider between panels
 - [ ] Set up basic navigation and controls
 - [ ] Create mock data for testing
-- [ ] Update STATUS.md
+- [ ] Update STATUS.md with any environment adaptations
 
 ### Day 2: PDF Viewer Features
 - [ ] Implement zoom controls (25% - 200%)

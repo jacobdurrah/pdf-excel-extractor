@@ -5,44 +5,39 @@ This plan coordinates 5 parallel agents to build the PDF to Excel Extractor with
 
 ## Human Prerequisites (Before Starting)
 
-### 1. Development Environment
-- Python 3.11+ installed
-- Node.js 18+ installed
-- Git configured with GitHub access
-- VS Code or preferred IDE ready
+### Minimal Requirements (5 minutes):
+1. **Review & Approve**: Read agent assignments and confirm project goals
+2. **Say "Start"**: Launch the parallel agents
+3. **Daily Check-in**: 10 minutes per day to review progress
 
-### 2. API Keys & Services
-- **PyTesseract OCR Setup**:
-  - Install Tesseract OCR locally
-  - Note installation path for configuration
-- **Code Signing Certificates** (Optional for distribution):
-  - Apple Developer ID (Mac)
-  - Windows Code Signing Certificate
-  - Can be added later for production
-
-### 3. Sample PDFs
-- Gather 3-5 sample PDFs for testing
-- Ensure variety: invoices, checks, forms
-- Nothing confidential (will be in test suite)
+### Automated by Agents:
+- ✅ Development environment checks (Python/Node.js versions)
+- ✅ Git already configured 
+- ✅ Sample PDF already available: `Check-EFTInfo - 2023-11-15T055920.964.pdf`
+- ✅ PyTesseract OCR (made optional - agents will check and adapt)
+- ✅ Additional test PDFs (agents will generate synthetic ones)
+- ✅ Code signing certificates (not needed for development)
 
 ## Phase 1: Project Setup & Agent Launch (Day 1)
 
 ### Human Tasks:
-1. Review and approve agent assignments
-2. Provide sample PDFs when requested
-3. Confirm security requirements
+1. Review and approve agent assignments (5 min)
+2. Confirm "start" to launch agents
 
-### Coordinator Tasks:
+### Coordinator Tasks (Automated):
 ```bash
-# Project already initialized, so we'll enhance structure
-cd "pdf Extractor"
+# Environment checks
+python3 --version || python --version
+node --version
+tesseract --version 2>/dev/null || echo "OCR is optional"
 
-# Create parallel agent directories
-mkdir -p parallel-implementation-plans/status
-mkdir -p parallel-implementation-plans/agents
+# Copy existing sample PDF
+cp "Check-EFTInfo - 2023-11-15T055920.964.pdf" test-data/samples/
 
-# Create test-data directory for sample PDFs
-mkdir -p test-data/samples
+# Each agent will:
+# - Check their specific requirements
+# - Adapt to available versions
+# - Report any issues in STATUS.md
 ```
 
 ### Launch 5 Parallel Agents:

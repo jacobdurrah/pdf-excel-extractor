@@ -13,12 +13,16 @@ Build the core PDF processing engine that extracts data from PDFs with high accu
 ## Day-by-Day Plan
 
 ### Day 1: Setup & Basic Parsing
-- [ ] Install PDF processing dependencies (pdfplumber, PyPDF2, camelot-py)
+- [ ] Check Python version (accept 3.8+ if available)
+- [ ] Install PDF processing dependencies with fallbacks:
+  - Try: `cd backend && poetry install`
+  - If Poetry not found: `pip install pdfplumber PyPDF2 openpyxl`
 - [ ] Create `backend/app/services/pdf_processor.py`
 - [ ] Implement basic PDF loading and text extraction
+- [ ] Test with existing sample: `Check-EFTInfo - 2023-11-15T055920.964.pdf`
 - [ ] Create data models for extraction results
 - [ ] Write unit tests for basic functionality
-- [ ] Update STATUS.md with progress
+- [ ] Update STATUS.md with progress and any environment issues
 
 ### Day 2: Advanced Extraction
 - [ ] Implement table detection using camelot-py
@@ -31,13 +35,16 @@ Build the core PDF processing engine that extracts data from PDFs with high accu
 - [ ] Handle multi-page PDFs
 - [ ] Update STATUS.md
 
-### Day 3: OCR Integration
-- [ ] Integrate pytesseract for scanned PDFs
-- [ ] Implement image preprocessing for better OCR
-- [ ] Create fallback mechanisms for poor quality scans
-- [ ] Add OCR confidence to scoring system
-- [ ] Test with various PDF qualities
-- [ ] Update STATUS.md
+### Day 3: OCR Integration (Optional)
+- [ ] Check if Tesseract is installed: `tesseract --version`
+- [ ] If available: Integrate pytesseract for scanned PDFs
+- [ ] If not available: 
+  - Focus on text-based PDF extraction
+  - Note in STATUS.md that OCR is pending
+  - Provide Tesseract installation instructions
+- [ ] Create fallback for non-OCR extraction
+- [ ] Test with text-based PDFs first
+- [ ] Update STATUS.md with OCR availability
 
 ### Day 4: Template System
 - [ ] Design template data structure
