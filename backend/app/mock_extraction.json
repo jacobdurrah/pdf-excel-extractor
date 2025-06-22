@@ -1,0 +1,52 @@
+{
+  "status": "completed",
+  "page_count": 7,
+  "confidence": 0.875,
+  "processing_time": 0.08,
+  "filename": "Check-EFTInfo - 2023-11-15T055920.964.pdf",
+  "fields": [
+    {
+      "name": "check_number",
+      "value": "1234",
+      "confidence": 0.98,
+      "page": 1,
+      "method": "text"
+    },
+    {
+      "name": "date",
+      "value": "11/16/2023",
+      "confidence": 0.90,
+      "page": 1,
+      "method": "text"
+    },
+    {
+      "name": "amount",
+      "value": "1,234.56",
+      "confidence": 0.85,
+      "page": 1,
+      "method": "text"
+    },
+    {
+      "name": "check_number",
+      "value": "5678",
+      "confidence": 0.95,
+      "page": 2,
+      "method": "text"
+    },
+    {
+      "name": "date",
+      "value": "10/31/2023",
+      "confidence": 0.88,
+      "page": 2,
+      "method": "text"
+    },
+    {
+      "name": "amount",
+      "value": "980.23",
+      "confidence": 0.82,
+      "page": 2,
+      "method": "text"
+    }
+  ],
+  "error_message": null
+}

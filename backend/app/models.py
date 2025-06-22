@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from enum import Enum
+from datetime import datetime
 
 
 class ExtractionMode(str, Enum):
@@ -72,3 +73,29 @@ class ExtractionResult(BaseModel):
     fields: List[ExtractedField]
     total_confidence: float
     processing_time: float
+
+
+# Security Models
+class SecurityConfig(BaseModel):
+    """Security configuration settings."""
+    max_file_size_mb: int = 100
+    allowed_extensions: List[str] = [".pdf"]
+    temp_file_lifetime_seconds: int = 3600
+    memory_limit_mb: int = 500
+    secure_delete_passes: int = 3
+    audit_retention_days: int = 90
+
+
+class AuditLog(BaseModel):
+    """Audit log entry."""
+    id: str
+    timestamp: datetime
+    action: str
+    user_id: str
+    file_hash: Optional[str] = None
+    details: Dict[str, Any] = {}
+    confidence_before: Optional[float] = None
+    confidence_after: Optional[float] = None
+    duration_ms: Optional[int] = None
+    success: bool = True
+    error_message: Optional[str] = None
