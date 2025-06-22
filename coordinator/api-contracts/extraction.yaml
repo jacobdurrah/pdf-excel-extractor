@@ -1,0 +1,124 @@
+openapi: 3.0.0
+info:
+  title: PDF Extraction API
+  version: 1.0.0
+  description: API contract for PDF to Excel extraction
+
+paths:
+  /api/extract/upload:
+    post:
+      summary: Upload PDF for extraction
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: PDF uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                  pageCount:
+                    type: integer
+                  fileSize:
+                    type: integer
+
+  /api/extract/process:
+    post:
+      summary: Process PDF extraction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fileId:
+                  type: string
+                mode:
+                  type: string
+                  enum: [step-by-step, batch]
+                template:
+                  type: string
+                  nullable: true
+      responses:
+        200:
+          description: Extraction started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                  status:
+                    type: string
+
+  /api/extract/step:
+    post:
+      summary: Extract single field (step-by-step mode)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+                fieldName:
+                  type: string
+                region:
+                  type: object
+                  properties:
+                    x:
+                      type: number
+                    y:
+                      type: number
+                    width:
+                      type: number
+                    height:
+                      type: number
+      responses:
+        200:
+          description: Field extracted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  confidence:
+                    type: number
+                  nextField:
+                    type: string
+                    nullable: true
+
+components:
+  schemas:
+    ExtractionResult:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+              confidence:
+                type: number
+              page:
+                type: integer
+              region:
+                type: object
