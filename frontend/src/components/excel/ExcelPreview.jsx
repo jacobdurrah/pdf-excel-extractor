@@ -1,6 +1,5 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import Spreadsheet from 'react-spreadsheet';
 import { 
   setSpreadsheetData, 
   updateCell, 
@@ -9,28 +8,24 @@ import {
   addRow,
   deleteRow,
   undo,
-  redo 
+  redo,
+  setValidationError 
 } from '../../store/slices/excelSlice';
 import { mockExcelData } from '../../mockData/extractionData';
+import CustomSpreadsheet from './CustomSpreadsheet';
+import CellEditor from './CellEditor';
+import KeyboardHandler from './KeyboardHandler';
+import FormulaBar from './FormulaBar';
+import { detectCellType, formatCellValue, cellValidationRules } from './DataValidation';
 import './ExcelPreview.css';
 
 const ExcelPreview = () => {
   const dispatch = useDispatch();
-  const { rows, selectedCell, editingCell, hasUnsavedChanges } = useSelector(state => state.excel);
-  const [spreadsheetData, setLocalSpreadsheetData] = useState([]);
+  const { rows, selectedCell, editingCell, hasUnsavedChanges, validationErrors, headers } = useSelector(state => state.excel);
+  const [showCellEditor, setShowCellEditor] = useState(false);
+  const [cellEditorProps, setCellEditorProps] = useState(null);
+  const spreadsheetRef = useRef(null);
 
-  // Convert extraction data to spreadsheet format
-  const convertToSpreadsheetFormat = useCallback((data) => {
-    if (!data || !data.rows) return [];
-    
-    return data.rows.map(row => 
-      row.cells.map(cell => ({
-        value: cell.value || '',
-        readOnly: cell.editable === false,
-        className: getClassNameForCell(cell),
-      }))
-    );
-  }, []);
 
   // Get cell styling based on data source and confidence
   const getClassNameForCell = (cell) => {
@@ -90,60 +85,34 @@ const ExcelPreview = () => {
     }
   }, [dispatch, rows.length]);
 
-  // Update local spreadsheet data when Redux state changes
-  useEffect(() => {
-    const convertedData = convertToSpreadsheetFormat({ rows });
-    setLocalSpreadsheetData(convertedData);
-  }, [rows, convertToSpreadsheetFormat]);
 
-  // Detect cell type based on value
-  const detectCellType = (value) => {
-    if (typeof value !== 'string') return 'text';
-    
-    if (value.match(/^\$?[\d,]+\.?\d*$/)) {
-      return value.startsWith('$') ? 'currency' : 'number';
-    }
-    if (value.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-      return 'date';
-    }
-    return 'text';
-  };
-
-  // Handle cell changes
-  const handleCellChange = useCallback((data) => {
-    // Find which cell changed
-    data.forEach((row, rowIndex) => {
-      row.forEach((cell, cellIndex) => {
-        const currentRow = rows[rowIndex];
-        if (currentRow && currentRow.cells[cellIndex]) {
-          const oldValue = currentRow.cells[cellIndex].value;
-          if (cell.value !== oldValue) {
-            dispatch(updateCell({
-              rowId: currentRow.id,
-              cellIndex,
-              value: cell.value,
-            }));
+  // Start editing a cell
+  const startEditing = useCallback((row, col, initialChar = '') => {
+    if (rows[row] && rows[row].cells[col] && rows[row].cells[col].editable !== false) {
+      const cell = rows[row].cells[col];
+      const cellElement = document.querySelector(
+        `.Spreadsheet__table tr:nth-child(${row + 2}) td:nth-child(${col + 2})`
+      );
+      
+      if (cellElement) {
+        const rect = cellElement.getBoundingClientRect();
+        setCellEditorProps({
+          rowId: rows[row].id,
+          cellIndex: col,
+          initialValue: initialChar || cell.value,
+          cellType: cell.type || detectCellType(cell.value),
+          position: {
+            top: rect.top,
+            left: rect.left
           }
-        }
-      });
-    });
-  }, [dispatch, rows]);
-
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        dispatch(undo());
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        dispatch(redo());
+        });
+        setShowCellEditor(true);
+        dispatch(setEditingCell({ row, col }));
       }
-    };
+    }
+  }, [rows, dispatch]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dispatch]);
+
 
   return (
     <div className="excel-preview-container">
@@ -188,12 +157,15 @@ const ExcelPreview = () => {
         </div>
       </div>
       
-      <div className="spreadsheet-wrapper">
-        {spreadsheetData.length > 0 && (
-          <Spreadsheet 
-            data={spreadsheetData}
-            onChange={handleCellChange}
-            columnLabels={['A', 'B', 'C', 'D', 'E']}
+      <FormulaBar />
+      
+      <div className="spreadsheet-wrapper" ref={spreadsheetRef}>
+        {rows.length > 0 && (
+          <CustomSpreadsheet
+            data={rows}
+            headers={headers}
+            onCellDoubleClick={startEditing}
+            validationErrors={validationErrors}
           />
         )}
       </div>
@@ -230,6 +202,22 @@ const ExcelPreview = () => {
         </div>
       </div>
     </div>
+    
+    {/* Keyboard handler */}
+    <KeyboardHandler onStartEdit={startEditing} />
+    
+    {/* Cell editor */}
+    {showCellEditor && cellEditorProps && (
+      <CellEditor
+        {...cellEditorProps}
+        onClose={() => {
+          setShowCellEditor(false);
+          setCellEditorProps(null);
+          dispatch(setEditingCell(null));
+        }}
+      />
+    )}
+  </div>
   );
 };
 

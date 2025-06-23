@@ -5,12 +5,14 @@ const initialState = {
   rows: [],
   selectedCell: null,
   editingCell: null,
+  copiedCells: null,
   history: {
     past: [],
     present: null,
     future: [],
   },
   hasUnsavedChanges: false,
+  validationErrors: {},
 };
 
 const excelSlice = createSlice({
@@ -83,6 +85,49 @@ const excelSlice = createSlice({
       }
     },
     resetExcel: () => initialState,
+    setCopiedCells: (state, action) => {
+      state.copiedCells = action.payload;
+    },
+    pasteCells: (state, action) => {
+      const { targetRow, targetCol } = action.payload;
+      if (state.copiedCells && state.copiedCells.length > 0) {
+        state.history.past.push(JSON.parse(JSON.stringify(state.rows)));
+        state.history.future = [];
+        
+        state.copiedCells.forEach(copiedCell => {
+          const rowOffset = targetRow - copiedCell.row;
+          const colOffset = targetCol - copiedCell.col;
+          const newRow = copiedCell.row + rowOffset;
+          const newCol = copiedCell.col + colOffset;
+          
+          if (newRow >= 0 && newRow < state.rows.length && 
+              newCol >= 0 && newCol < state.headers.length) {
+            if (state.rows[newRow].cells[newCol].editable !== false) {
+              state.rows[newRow].cells[newCol] = {
+                ...state.rows[newRow].cells[newCol],
+                value: copiedCell.value,
+                source: 'manual',
+                edited: true,
+              };
+            }
+          }
+        });
+        
+        state.hasUnsavedChanges = true;
+      }
+    },
+    setValidationError: (state, action) => {
+      const { rowId, cellIndex, error } = action.payload;
+      const key = `${rowId}-${cellIndex}`;
+      if (error) {
+        state.validationErrors[key] = error;
+      } else {
+        delete state.validationErrors[key];
+      }
+    },
+    clearValidationErrors: (state) => {
+      state.validationErrors = {};
+    },
   },
 });
 
@@ -96,6 +141,10 @@ export const {
   undo,
   redo,
   resetExcel,
+  setCopiedCells,
+  pasteCells,
+  setValidationError,
+  clearValidationErrors,
 } = excelSlice.actions;
 
 export default excelSlice.reducer;

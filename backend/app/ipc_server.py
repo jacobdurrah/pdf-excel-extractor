@@ -13,6 +13,9 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import traceback
 
+from .message_handler import ExtractorMessageHandler, logging_middleware, rate_limit_middleware
+from .protocols import BaseMessage
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -30,189 +33,24 @@ class IPCServer:
     
     def __init__(self):
         self.running = False
-        self.message_handlers = {}
-        self.setup_handlers()
+        self.message_handler = ExtractorMessageHandler()
+        self.setup_middleware()
         
-    def setup_handlers(self):
-        """Register message handlers"""
-        self.message_handlers = {
-            'ping': self.handle_ping,
-            'shutdown': self.handle_shutdown,
-            'extraction.process': self.handle_extraction,
-            'export.excel': self.handle_export,
-            'file.read': self.handle_file_read,
-            'file.validate': self.handle_file_validate,
-        }
+    def setup_middleware(self):
+        """Setup message processing middleware"""
+        # Add logging middleware
+        self.message_handler.use_middleware(logging_middleware)
+        
+        # Add rate limiting middleware (100 requests per minute)
+        self.message_handler.use_middleware(rate_limit_middleware(100, 60))
     
-    async def handle_ping(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle ping messages for connection check"""
-        return {
-            'id': message.get('id'),
-            'type': 'pong',
-            'timestamp': int(datetime.now().timestamp() * 1000)
-        }
+    def set_pdf_processor(self, processor):
+        """Set the PDF processor for extraction"""
+        self.message_handler.pdf_processor = processor
     
-    async def handle_shutdown(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle shutdown request"""
-        self.running = False
-        return {
-            'id': message.get('id'),
-            'type': 'shutdown.response',
-            'status': 'success',
-            'payload': {'message': 'Shutting down'},
-            'timestamp': int(datetime.now().timestamp() * 1000)
-        }
-    
-    async def handle_extraction(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle PDF extraction request"""
-        try:
-            payload = message.get('payload', {})
-            file_path = payload.get('file')
-            mode = payload.get('mode', 'automatic')
-            
-            # TODO: Integrate with actual PDF processor
-            # For now, return mock data
-            result = {
-                'sessionId': f'session-{int(datetime.now().timestamp())}',
-                'fields': [
-                    {
-                        'name': 'check_number',
-                        'value': '12345',
-                        'confidence': 0.95,
-                        'bbox': [100, 100, 200, 120]
-                    },
-                    {
-                        'name': 'date',
-                        'value': '2024-01-15',
-                        'confidence': 0.98,
-                        'bbox': [300, 100, 400, 120]
-                    }
-                ],
-                'mode': mode
-            }
-            
-            # Send progress updates
-            await self.send_progress('extraction.progress', {
-                'sessionId': result['sessionId'],
-                'progress': 50,
-                'currentField': 'check_number',
-                'message': 'Extracting check number...'
-            })
-            
-            return {
-                'id': message.get('id'),
-                'type': 'extraction.process.response',
-                'status': 'success',
-                'payload': result,
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
-            
-        except Exception as e:
-            logger.error(f"Extraction error: {str(e)}\n{traceback.format_exc()}")
-            return {
-                'id': message.get('id'),
-                'type': 'extraction.process.response',
-                'status': 'error',
-                'error': str(e),
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
-    
-    async def handle_export(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle Excel export request"""
-        try:
-            payload = message.get('payload', {})
-            session_id = payload.get('sessionId')
-            output_path = payload.get('outputPath')
-            
-            # TODO: Integrate with actual Excel exporter
-            result = {
-                'filePath': output_path or '/tmp/export.xlsx',
-                'rowCount': 10,
-                'fileSize': 25600
-            }
-            
-            return {
-                'id': message.get('id'),
-                'type': 'export.excel.response',
-                'status': 'success',
-                'payload': result,
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
-            
-        except Exception as e:
-            logger.error(f"Export error: {str(e)}\n{traceback.format_exc()}")
-            return {
-                'id': message.get('id'),
-                'type': 'export.excel.response',
-                'status': 'error',
-                'error': str(e),
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
-    
-    async def handle_file_read(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle file read request"""
-        try:
-            payload = message.get('payload', {})
-            file_path = payload.get('path')
-            
-            # TODO: Integrate with secure file handler
-            # For now, return mock data
-            result = {
-                'path': file_path,
-                'size': 1024000,
-                'mimeType': 'application/pdf',
-                'exists': True
-            }
-            
-            return {
-                'id': message.get('id'),
-                'type': 'file.read.response',
-                'status': 'success',
-                'payload': result,
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
-            
-        except Exception as e:
-            logger.error(f"File read error: {str(e)}\n{traceback.format_exc()}")
-            return {
-                'id': message.get('id'),
-                'type': 'file.read.response',
-                'status': 'error',
-                'error': str(e),
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
-    
-    async def handle_file_validate(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle file validation request"""
-        try:
-            payload = message.get('payload', {})
-            file_path = payload.get('path')
-            
-            # TODO: Integrate with security validators
-            result = {
-                'valid': True,
-                'mimeType': 'application/pdf',
-                'size': 1024000,
-                'issues': []
-            }
-            
-            return {
-                'id': message.get('id'),
-                'type': 'file.validate.response',
-                'status': 'success',
-                'payload': result,
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
-            
-        except Exception as e:
-            logger.error(f"File validation error: {str(e)}\n{traceback.format_exc()}")
-            return {
-                'id': message.get('id'),
-                'type': 'file.validate.response',
-                'status': 'error',
-                'error': str(e),
-                'timestamp': int(datetime.now().timestamp() * 1000)
-            }
+    def set_excel_exporter(self, exporter):
+        """Set the Excel exporter"""
+        self.message_handler.excel_exporter = exporter
     
     async def send_progress(self, event_type: str, payload: Dict[str, Any]):
         """Send progress event to frontend"""
@@ -233,19 +71,24 @@ class IPCServer:
     
     async def process_message(self, message: Dict[str, Any]):
         """Process incoming message"""
-        msg_type = message.get('type')
-        
-        if msg_type in self.message_handlers:
-            handler = self.message_handlers[msg_type]
-            response = await handler(message)
+        try:
+            # Use the message handler to process the message
+            response = await self.message_handler.process_message(message)
+            
             if response:
                 self.send_message(response)
-        else:
+                
+        except Exception as e:
+            logger.error(f"Failed to process message: {str(e)}\n{traceback.format_exc()}")
             error_response = {
                 'id': message.get('id'),
-                'type': f'{msg_type}.response',
+                'type': f"{message.get('type', 'unknown')}.response",
                 'status': 'error',
-                'error': f'Unknown message type: {msg_type}',
+                'error': {
+                    'code': 'ERR_PROCESSING_FAILED',
+                    'message': str(e),
+                    'timestamp': int(datetime.now().timestamp() * 1000)
+                },
                 'timestamp': int(datetime.now().timestamp() * 1000)
             }
             self.send_message(error_response)
@@ -281,6 +124,7 @@ class IPCServer:
         """Main server loop"""
         self.running = True
         logger.info("IPC Server started")
+        logger.info(f"Message handler stats: {self.message_handler.get_stats()}")
         
         # Set up signal handlers
         def signal_handler(sig, frame):
@@ -292,9 +136,12 @@ class IPCServer:
         
         try:
             await self.read_stdin()
+        except KeyboardInterrupt:
+            logger.info("Shutdown requested")
         except Exception as e:
             logger.error(f"Server error: {str(e)}\n{traceback.format_exc()}")
         finally:
+            logger.info(f"Final stats: {self.message_handler.get_stats()}")
             logger.info("IPC Server stopped")
 
 

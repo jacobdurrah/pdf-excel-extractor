@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import PageControls from './PageControls';
+import HighlightOverlay from './HighlightOverlay';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-const PDFViewer = ({ pdfUrl = null }) => {
+const PDFViewer = ({ pdfUrl = null, highlights = [], onHighlightClick, onSelectionComplete }) => {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [pdf, setPdf] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [activeHighlight, setActiveHighlight] = useState(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   // Mock PDF URL for testing
   const mockPdfUrl = '/test-data/sample.pdf';
@@ -88,6 +94,83 @@ const PDFViewer = ({ pdfUrl = null }) => {
     }
   };
 
+  const handleFitToWidth = () => {
+    if (!containerRef.current || !pdf) return;
+    
+    pdf.getPage(currentPage).then(page => {
+      const viewport = page.getViewport({ scale: 1 });
+      const containerWidth = containerRef.current.clientWidth - 32; // Subtract padding
+      const newScale = containerWidth / viewport.width;
+      setScale(Math.min(newScale, 2)); // Cap at 200%
+    });
+  };
+
+  const handleToggleSelection = () => {
+    setIsSelecting(!isSelecting);
+  };
+
+  const handleHighlightClick = (highlight) => {
+    setActiveHighlight(highlight.id);
+    if (onHighlightClick) {
+      onHighlightClick(highlight);
+    }
+  };
+
+  const handleSelectionComplete = (coords) => {
+    setIsSelecting(false);
+    if (onSelectionComplete) {
+      onSelectionComplete({ ...coords, page: currentPage });
+    }
+  };
+
+  // Pan functionality
+  const handleMouseDown = (e) => {
+    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) { // Middle mouse or Ctrl+Left click
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isPanning || !containerRef.current) return;
+    
+    const deltaX = e.clientX - panStart.x;
+    const deltaY = e.clientY - panStart.y;
+    
+    containerRef.current.scrollLeft -= deltaX;
+    containerRef.current.scrollTop -= deltaY;
+    
+    setPanStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === ' ' && !e.target.matches('input, textarea')) {
+        setIsPanning(true);
+        e.preventDefault();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (e.key === ' ') {
+        setIsPanning(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
   const handlePreviousPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
@@ -112,6 +195,9 @@ const PDFViewer = ({ pdfUrl = null }) => {
           onZoomOut={handleZoomOut}
           onPreviousPage={handlePreviousPage}
           onNextPage={handleNextPage}
+          onFitToWidth={handleFitToWidth}
+          onToggleSelection={handleToggleSelection}
+          isSelecting={isSelecting}
           disabled={true}
         />
         <div className="flex-1 flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200">
@@ -138,10 +224,21 @@ const PDFViewer = ({ pdfUrl = null }) => {
         onZoomOut={handleZoomOut}
         onPreviousPage={handlePreviousPage}
         onNextPage={handleNextPage}
+        onFitToWidth={handleFitToWidth}
+        onToggleSelection={handleToggleSelection}
+        isSelecting={isSelecting}
         disabled={loading}
       />
       
-      <div className="flex-1 overflow-auto bg-white rounded-lg shadow-sm border border-gray-200">
+      <div 
+        ref={containerRef}
+        className="flex-1 overflow-auto bg-white rounded-lg shadow-sm border border-gray-200"
+        style={{ cursor: isPanning ? 'grab' : isSelecting ? 'crosshair' : 'default' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
         {loading && (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -160,8 +257,17 @@ const PDFViewer = ({ pdfUrl = null }) => {
         )}
         
         {!loading && !error && (
-          <div className="p-4 overflow-auto">
+          <div className="p-4 relative inline-block">
             <canvas ref={canvasRef} className="mx-auto" />
+            <HighlightOverlay
+              canvasRef={canvasRef}
+              highlights={highlights.filter(h => h.page === currentPage)}
+              activeHighlight={activeHighlight}
+              onHighlightClick={handleHighlightClick}
+              onSelectionComplete={handleSelectionComplete}
+              scale={scale}
+              isSelecting={isSelecting}
+            />
           </div>
         )}
       </div>
